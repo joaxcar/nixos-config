@@ -4,6 +4,11 @@
 
 { config, pkgs, ... }:
 
+let 
+   unstableTarball = 
+     fetchTarball
+       https://nixos.org/channels/nixos-unstable/nixexprs.tar.xz;
+in
 {
   imports =
     [ # Include the results of the hardware scan.
@@ -34,12 +39,25 @@
 
   # List packages installed in system profile. To search, run:
   # $ nix search wget
+  nixpkgs.config = {
+    allowUnfree = true;
+    packageOverrides = pkgs: {
+      unstable = import unstableTarball {
+        config = config.nixpkgs.config;
+      };
+    };
+  };
+
   environment.systemPackages = with pkgs; [
     vim
+    unstable.antibody
+    zsh
     firefox
+    git
     dmenu
     networkmanager
   ];
+  
 
   # Some programs need SUID wrappers, can be configured further or are
   # started in user sessions.
@@ -76,10 +94,29 @@
   # Enable the KDE Desktop Environment.
   # services.xserver.displayManagergsddm.enable = true;
   # services.xserver.desktopManager.plasma5.enable = true;
+
+
+  networking.firewall = {
+      enable = true;
+      allowedTCPPorts = [ 80 443 ];
+  };
+  services.httpd = {
+      enable = true;
+      enablePHP = true;
+      enableUserDir = true;
+      adminAddr = "johan@naetet.se";
+      hostName = "localhost";
+      documentRoot = "/www";
+  };
+  services.mysql = {
+      enable = true;
+      package = pkgs.mysql57;
+      dataDir = "/var/lib/mysql";
+  };
   services.xserver = {
       enable = true;
-      layout = "us";
-      xkbOptions = "ctrl:nocaps";
+      layout = "us,se";
+      xkbOptions = "caps:alt,shift:both_capslock,ctrl:swap_lalt_lctl_lwin,ctrl:ralt_rctrl,ctrl:swap_rwin_rctl";
       windowManager.xmonad.enable = true;
       windowManager.xmonad.enableContribAndExtras = true;
       desktopManager.default = "none";
@@ -99,7 +136,7 @@
     extraGroups = [ "wheel" ];
     createHome = true;
     home = "/home/johan";
-    shell = "/run/current-system/sw/bin/bash";
+    shell = "/run/current-system/sw/bin/zsh";
     uid = 1000;
   };
 
